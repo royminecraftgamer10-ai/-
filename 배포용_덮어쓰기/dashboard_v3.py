@@ -1514,8 +1514,39 @@ def eok(won: float) -> str:
     return f"{won / 1e8:,.0f}억 원"
 
 
+MAP_UNIFY_CSS = """
+<style id="jeju-map-unify">
+.jmap, .ovmap svg { background:#a0d8f4 !important; border-radius:10px; }
+.jmap path.rg, .ovmap path.rg { stroke:#ffffff; stroke-width:1; }
+.ovmap path.rg.dim { opacity:1 !important; }
+.jmap path.rg[fill="var(--land)"], .ovmap path.rg[fill="var(--land)"] { fill:#f0ede4; }
+.jmap text.lbl, .ovmap text.lbl { font-size:14px; font-weight:800; fill:#ffffff; paint-order:stroke; stroke:#08263a; stroke-width:5px; stroke-linejoin:round; }
+.jmap text.lbl2, .ovmap text.lbl2, .jmap .sea { fill:#2f5f78; }
+.jmap .inset { stroke:#2f5f78; }
+</style>
+<script id="jeju-map-coast">
+(function(){
+  var NS="http://www.w3.org/2000/svg", queued=false;
+  function coast(svg){
+    var ps=svg.querySelectorAll("path.rg");
+    if(!ps.length||svg.querySelector("g.coast"))return;
+    var g=document.createElementNS(NS,"g"); g.setAttribute("class","coast"); g.setAttribute("pointer-events","none");
+    ps.forEach(function(p){var c=document.createElementNS(NS,"path");c.setAttribute("d",p.getAttribute("d"));
+      c.setAttribute("fill","none");c.setAttribute("stroke","#0b6ea0");c.setAttribute("stroke-width","6");c.setAttribute("stroke-linejoin","round");g.appendChild(c);});
+    svg.insertBefore(g,ps[0]);
+  }
+  function run(){queued=false;document.querySelectorAll(".jmap, .ovmap svg").forEach(function(n){coast(n.tagName.toLowerCase()==="svg"?n:n.querySelector("svg"));});}
+  function q(){if(!queued){queued=true;requestAnimationFrame(run);}}
+  new MutationObserver(q).observe(document.documentElement,{childList:true,subtree:true});
+  q();
+})();
+</script>
+"""
+
+
 def with_focus(page: str, region: str | None) -> str:
-    """요약 탭에서 넘어온 지역이 있으면 HTML의 '지역별 상세' 화면을 그 지역으로 연다."""
+    """지도 형식을 통일하고, 요약 탭에서 넘어온 지역이 있으면 '지역별 상세' 화면을 그 지역으로 연다."""
+    page = page.replace("</body>", MAP_UNIFY_CSS + "</body>", 1)
     if not region:
         return page
     script = (
@@ -1550,6 +1581,12 @@ def _ring_centroid(ring):
     return cx / (3 * a), cy / (3 * a), abs(a) / 2
 
 
+LABEL_OFFSETS = {  # 제주시 중심부처럼 좁은 곳은 이름표를 바다 쪽으로 비켜 놓는다 (화면 픽셀)
+    "도두동": [-52, -26], "삼도1동": [-14, -46], "건입동": [30, -54], "일도2동": [54, -24],
+    "오라동": [-28, 4], "아라동": [28, 10], "중문동": [-8, -16], "대천동": [12, 10],
+}
+
+
 def label_points(boundary_data: dict) -> list:
     """각 행정구역의 가장 큰 면 중심에 지역명 라벨 위치를 만든다."""
     out = []
@@ -1560,16 +1597,17 @@ def label_points(boundary_data: dict) -> list:
             (_ring_centroid([tuple(pt[:2]) for pt in poly[0]]) for poly in polys),
             key=lambda t: t[2],
         )
-        size = 12 if best[2] > 4e-4 else (10.5 if best[2] > 6e-5 else 9)
-        out.append({"name": f["properties"]["행정구역명"], "pos": [best[0], best[1]], "size": size})
+        size = 13 if best[2] > 4e-4 else (12 if best[2] > 6e-5 else 11)
+        name = f["properties"]["행정구역명"]
+        out.append({"name": name, "pos": [best[0], best[1]], "size": size, "off": LABEL_OFFSETS.get(name, [0, 0])})
     return out
 
 
 BANNER_HTML = (
     "<div class='jeju-banner'>"
     '<svg viewBox="0 0 1000 150" preserveAspectRatio="xMaxYMax meet"><defs><radialGradient id="jj_glow"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><linearGradient id="jj_gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4fae55"/><stop offset="1" stop-color="#2a7d3c"/></linearGradient><radialGradient id="jj_og" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffb35c"/><stop offset="1" stop-color="#f27a12"/></radialGradient><radialGradient id="jj_rg" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#e5484d"/><stop offset="1" stop-color="#b5232b"/></radialGradient><linearGradient id="jj_sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7b8798"/><stop offset="1" stop-color="#5b6677"/></linearGradient><filter id="jj_sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#06344b" flood-opacity=".28"/></filter></defs><!-- orange path --><path d="M430 150 L430 120 Q430 104 446 104 L930 104 Q960 104 960 74 Q960 56 940 56" fill="none" stroke="#ff8a1f" stroke-width="8" stroke-linecap="round" opacity="0"/><path d="M440 108 Q470 108 500 108 T600 108 T700 108 T800 108 T900 108 T1000 108" fill="none" stroke="#ff8a1f" stroke-width="8" stroke-linecap="round" opacity="0"/><path d="M0 120 L1000 120" stroke="#ff8a1f" stroke-width="9" stroke-linecap="round" opacity="0"/><path d="M450 126 Q480 126 505 126 L840 126 Q872 126 872 126 L1000 126" fill="none" stroke="#ff8a1f" stroke-width="9" stroke-linecap="round"/><g fill="#ff8a1f"><circle cx="545" cy="126" r="9"/><circle cx="665" cy="126" r="9"/><circle cx="785" cy="126" r="9"/><circle cx="905" cy="126" r="9"/></g><g fill="url(#jj_glow)"><circle cx="545" cy="126" r="20"/><circle cx="665" cy="126" r="20"/><circle cx="785" cy="126" r="20"/><circle cx="905" cy="126" r="20"/></g><g fill="#ff8a1f"><circle cx="545" cy="126" r="9"/><circle cx="665" cy="126" r="9"/><circle cx="785" cy="126" r="9"/><circle cx="905" cy="126" r="9"/></g><!-- 한라산 --><g transform="translate(497,38)" filter="url(#jj_sh)"><path d="M2 80 Q14 62 28 46 L34 36 Q48 22 62 36 L70 46 Q84 62 96 80 Z" fill="url(#jj_gm)"/><path d="M28 46 L34 36 Q48 22 62 36 L70 46 Q64 44 60 50 Q55 42 48 50 Q42 42 36 50 Q32 44 28 46Z" fill="#fff"/><ellipse cx="48" cy="33" rx="10" ry="3.6" fill="#3d9ee8"/></g><!-- 동백 --><g transform="translate(617,38)" filter="url(#jj_sh)"><path d="M12 72 Q22 62 34 66 Q26 78 12 72Z" fill="#3c9a4a"/><path d="M84 72 Q74 62 62 66 Q70 78 84 72Z" fill="#3c9a4a"/><g fill="url(#jj_rg)"><circle cx="48" cy="26" r="19"/><circle cx="30" cy="40" r="19"/><circle cx="66" cy="40" r="19"/><circle cx="36" cy="58" r="18"/><circle cx="60" cy="58" r="18"/></g><circle cx="48" cy="44" r="12" fill="#d9363e"/><g fill="#ffd74a"><circle cx="42" cy="42" r="2.2"/><circle cx="48" cy="38" r="2.2"/><circle cx="54" cy="42" r="2.2"/><circle cx="45" cy="48" r="2.2"/><circle cx="52" cy="48" r="2.2"/></g></g><!-- 귤 --><g transform="translate(737,36)" filter="url(#jj_sh)"><path d="M48 12 Q50 2 62 2 Q58 12 48 14Z" fill="#4fae55"/><rect x="46" y="8" width="4" height="9" rx="2" fill="#3a7d34"/><path d="M48 16 Q70 12 80 34 Q86 58 70 74 Q48 86 26 74 Q10 58 16 34 Q26 12 48 16Z" fill="url(#jj_og)"/><ellipse cx="34" cy="34" rx="8" ry="5" fill="#fff" opacity=".35" transform="rotate(-30 34 34)"/><g fill="#d86a0d" opacity=".55"><circle cx="58" cy="44" r="1.4"/><circle cx="50" cy="56" r="1.4"/><circle cx="64" cy="58" r="1.4"/><circle cx="40" cy="62" r="1.4"/><circle cx="56" cy="30" r="1.4"/></g></g><!-- 돌하르방 --><g transform="translate(857,32)" filter="url(#jj_sh)"><rect x="22" y="10" width="52" height="66" rx="12" fill="url(#jj_sg)"/><path d="M20 22 Q20 4 48 4 Q76 4 76 22 L76 26 L20 26 Z" fill="#4f5a6b"/><path d="M30 6 Q48 -1 66 6" stroke="#fff" stroke-opacity=".25" stroke-width="2.5" fill="none"/><path d="M30 35 Q37 31 43 34" stroke="#2b3340" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M66 35 Q59 31 53 34" stroke="#2b3340" stroke-width="2.4" stroke-linecap="round" fill="none"/><ellipse cx="37" cy="44" rx="4.6" ry="5.4" fill="#222a36"/><ellipse cx="59" cy="44" rx="4.6" ry="5.4" fill="#222a36"/><circle cx="38.6" cy="42.2" r="1.7" fill="#fff"/><circle cx="60.6" cy="42.2" r="1.7" fill="#fff"/><ellipse cx="29" cy="54" rx="5" ry="3" fill="#ff9aa2" opacity=".75"/><ellipse cx="67" cy="54" rx="5" ry="3" fill="#ff9aa2" opacity=".75"/><ellipse cx="48" cy="51" rx="4.6" ry="3" fill="#4b5667"/><path d="M39 58 Q48 68 57 58 Q48 62 39 58Z" fill="#2b3340"/><path d="M42 60.5 Q48 65 54 60.5 Q48 62.4 42 60.5Z" fill="#ff8f8f"/><ellipse cx="22" cy="68" rx="9" ry="8" fill="#6b7788"/><ellipse cx="74" cy="68" rx="9" ry="8" fill="#6b7788"/></g></svg>'
-    "<div class='txt'><b>한라산에서 바다까지, 43개 읍면동의 관광 소비</b>"
-    "<span>방문 대비 소비 · 시기·업종 집중을 한눈에 · 2025.08~2026.07</span></div></div>"
+    "<div class='txt'><b>제주 관광, 방문을 넘어 소비를 진단하다</b>"
+    "<span>43개 읍면동의 방문 대비 소비 수준과 시기·업종별 집중 현상을 분석합니다.</span></div></div>"
 )
 
 
@@ -1642,16 +1680,18 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
         get_position="pos",
         get_text="name",
         get_size="size",
+        get_pixel_offset="off",
         size_units=_S("pixels"),
-        get_color=[21, 32, 30, 255],
+        get_color=[255, 255, 255, 255],
         get_text_anchor=_S("middle"),
         get_alignment_baseline=_S("center"),
         font_family=_S('"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif'),
-        font_weight=700,
+        font_weight=800,
         character_set=_S("auto"),
-        font_settings={"sdf": True, "buffer": 6, "radius": 6},
-        outline_width=4,
-        outline_color=[255, 255, 255, 235],
+        font_settings={"sdf": True, "fontSize": 96, "buffer": 8, "radius": 8},
+        background=True,
+        get_background_color=[8, 38, 58, 215],
+        background_padding=[4, 2],
     )
     return pdk.Deck(
         layers=[sea_layer(), coast_layer(boundary_data), layer, labels],
@@ -1761,8 +1801,8 @@ def render_summary_home(boundary_data: dict) -> None:
         f"<b>{n_conc}곳</b>은 관광객 소비가 특정 시기·업종에 쏠립니다(시기·업종 집중). "
         f"두 기준에 모두 해당하는 곳은 <b>{both_text}</b> {len(both)}곳입니다.</p>"
         "<p class='sub'>두 분석은 서로 다른 질문을 봅니다. 방문 대비 소비는 방문객 수에 견준 소비 수준이고, "
-        "시기·업종 집중은 한 해 안에서 소비가 몰리는 달과 업종이어서 목록이 크게 겹치지 않습니다. "
-        f"기간 {summary['period']} · 근거는 심층분석 탭에서 확인합니다.</p></div>",
+        "시기·업종 집중은 한 해 안에서 소비가 몰리는 달과 업종을 분석합니다. "
+        f"분석 기간 {summary['period']} · 근거는 심층분석 탭에서 확인합니다.</p></div>",
         unsafe_allow_html=True,
     )
 
@@ -1891,7 +1931,7 @@ with st.sidebar:
         st.caption("지역별·업종별 주제를 심층적으로 비교합니다.")
 
 if main_menu == "대시보드":
-    st.title("제주 관광소비 진단 요약")
+    st.title("제주 관광소비 진단 대시보드")
     st.markdown(BANNER_HTML, unsafe_allow_html=True)
     st.caption("심층분석의 결론만 모아 먼저 보여줍니다. 지역을 고르면 근거 화면으로 이어집니다.")
     render_summary_home(boundary_data)
