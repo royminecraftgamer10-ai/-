@@ -1742,8 +1742,6 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
             fill = KIND_RGB["spend"] if kind in ("spend", "both") else OTHER_RGB
         else:
             fill = KIND_RGB["conc"] if kind in ("conc", "both") else OTHER_RGB
-        if selected:  # 지역을 고르면 그 지역만 분류 색으로, 나머지는 옅은 육지색으로
-            fill = KIND_RGB[kind] if (region == selected and kind) else OTHER_RGB
         if fill != OTHER_RGB:
             colored.add(region)
         properties.update(
