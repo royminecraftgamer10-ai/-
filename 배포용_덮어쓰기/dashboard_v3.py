@@ -1695,7 +1695,8 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
     )
     return pdk.Deck(
         layers=[sea_layer(), coast_layer(boundary_data), layer, labels],
-        initial_view_state=pdk.ViewState(latitude=33.37, longitude=126.56, zoom=9.1),
+        initial_view_state=pdk.ViewState(latitude=33.37, longitude=126.56, zoom=9.1, min_zoom=8.8, max_zoom=12.5),
+        views=[pdk.View(type="MapView", controller={"dragRotate": False, "touchRotate": False})],
         map_style="light",
         tooltip={
             "html": "<b>{행정구역명}</b><br/>{상태}",
