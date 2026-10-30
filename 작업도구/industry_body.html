@@ -1,0 +1,368 @@
+
+/* ===== 업종별(시기·업종 집중) 전용 — 지역별 대시보드와 같은 토큰 사용 ===== */
+.ovmap .rg.dim{opacity:.35}
+.tybadge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:1px 10px;border-radius:999px;border:1px solid var(--rule);white-space:nowrap}
+.tybadge i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.monthtag{font-family:var(--mono);font-size:12px;padding:1px 7px;border-radius:6px;background:var(--rule-2);color:var(--ink-2);white-space:nowrap}
+.monthtag.hi{background:rgba(42,120,214,.12);color:var(--cD)}
+.monthtag.lo{background:rgba(127,140,137,.14);color:var(--ink-2)}
+.hm{border-collapse:separate;border-spacing:2px;font-size:12px;width:100%}
+.hm th{font-size:11px;font-weight:500;color:var(--ink-3);font-family:var(--mono);text-align:center;padding:2px}
+.hm th.l{text-align:left;font-family:var(--sans);font-size:12.5px;color:var(--ink-2);white-space:nowrap;padding-right:8px}
+.hm td{height:26px;border-radius:4px;text-align:center;font-family:var(--mono);font-size:11px;padding:0;border:0}
+.hm td.na{background:repeating-linear-gradient(45deg,var(--rule-2),var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);color:var(--ink-3)}
+.sbar{display:flex;height:22px;border-radius:5px;overflow:hidden;gap:1px;background:var(--rule-2)}
+.sbar span{height:100%;min-width:1px}
+.srow{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px;align-items:center;font-size:13px}
+.srow .pl{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.srow.cur .pl{color:var(--ink);font-weight:600}
+.ratio{display:grid;gap:9px}
+.ratio .r{display:grid;grid-template-columns:110px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:13.5px}
+.ratio .b{position:relative;height:16px;background:var(--rule-2);border-radius:3px}
+.ratio .b i{position:absolute;inset:0 auto 0 0;border-radius:3px}
+.ratio .b u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);text-decoration:none}
+.ratio .v{font-family:var(--mono);text-align:right}
+.pair{display:grid;gap:10px}
+.pair .r{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:center;font-size:13.5px}
+.pair .bs{display:grid;gap:3px}
+.pair .bl{display:grid;grid-template-columns:minmax(0,1fr) 52px;gap:8px;align-items:center}
+.pair .t{height:11px;background:var(--rule-2);border-radius:3px;position:relative}
+.pair .t i{position:absolute;inset:0 auto 0 0;border-radius:3px}
+.pair .bl b{font-family:var(--mono);font-size:12px;font-weight:500;text-align:right}
+.cmx td .c{width:30px;height:16px;border-radius:4px;display:inline-block;vertical-align:middle}
+.cmx td.n{font-family:var(--mono);font-size:12px}
+.cmx tr.t{cursor:pointer}
+.cmx tr.t:hover td{background:var(--rule-2)}
+.cmx .base0{color:var(--ink-3)}
+.dxl{display:grid;gap:12px}
+.dxl .it{border:1px solid var(--rule);border-radius:10px;padding:12px 16px;display:grid;gap:6px}
+.dxl .it b{font-size:15px}
+#perSeg{flex-wrap:wrap;max-width:100%}
+@media (max-width:560px){#perSeg button{flex:1 1 100%}#perSeg button+button{border-left:0;border-top:1px solid var(--rule)}}
+</style>
+<div class="shell">
+<aside class="side">
+  <div class="brand">제주 관광소비 진단</div>
+  <nav class="tabs" role="tablist" aria-label="진단 단계">
+    <button role="tab" id="tab-ov" aria-controls="ov" aria-selected="true">대시보드</button>
+    <button role="tab" id="tab-where" aria-controls="where" aria-selected="false">집중 지역</button>
+    <button role="tab" id="tab-why" aria-controls="why" aria-selected="false">지역별 상세</button>
+    <button role="tab" id="tab-dx" aria-controls="dx" aria-selected="false">대응</button>
+  </nav>
+</aside>
+<div class="wrap">
+  <header class="top">
+    <h1>시기·업종 집중 진단</h1>
+    <p class="dsc">월별 소비 집중도와 연간 업종 집중도가 모두 높은 읍면동을 찾고, 지역별 소비 구조와 대응 방향을 보여주는 대시보드</p>
+  </header>
+
+  <!-- 0. 대시보드 -->
+  <section class="tab" id="ov" role="tabpanel" aria-labelledby="tab-ov">
+    <div class="ovf"><div class="pills" id="ovtypes"></div>
+      <div class="ovsel"><select id="ovper" aria-label="분석 구간"></select><span class="fx">관광객 전체 (내국인+외국인)</span></div></div>
+    <div class="ovk" id="ovk"></div>
+    <div class="ovgrid"><div class="panel ovmap"><div class="ovleg" id="ovleg"></div><div id="ovmapbox"></div></div>
+      <div class="panel ovd" id="ovd"></div></div>
+    <div class="panel ovlist" id="ovlist"></div>
+  </section>
+
+  <!-- 1. 집중 지역 -->
+  <section class="tab" id="where" role="tabpanel" aria-labelledby="tab-where" hidden>
+    <div class="panel">
+      <div class="ph"><h2>어느 곳이 시기·업종 집중형인가</h2><span class="q">점 하나 = 읍면동 하나 · 음영 = 두 기준 모두 43곳 상위 25%</span></div>
+      <div class="ctl"><div class="seg" role="group" aria-label="분석 구간" id="perSeg"></div></div>
+      <div class="legend" id="lgsc"></div>
+      <div id="sc"></div>
+      <p class="small muted" id="scnote"></p>
+    </div>
+    <div class="panel">
+      <div class="ph"><h2>3개 구간에서 반복되는가</h2><span class="q">구간별 종합 유형 · 숫자 = 기준 변경 시 집중형 유지 횟수</span></div>
+      <div class="legend" id="lgmx"></div>
+      <div class="tw"><table class="mx cmx" id="cmx"></table></div>
+      <p class="small muted">시기·업종 기준을 각각 상위 30%·25%·20%로 바꾼 총 9개 조합에서 집중형으로 분류된 횟수입니다. 9/9회는 기준 변화에도 분류가 안정적이고, 6/9회는 일부 기준에서 분류가 달라짐을 뜻합니다. 확률·정확도가 아니며 기본 판정은 두 지표 모두 상위 25%입니다. 경계값은 구간마다 다시 계산합니다.</p>
+    </div>
+    <details class="evid"><summary>근거 보기 <span class="muted small">(제주 전체 비교 · 43곳 전체 표)</span></summary>
+      <div class="panel">
+        <div class="ph"><h2>제주 전체와 비교해도 몰리는가</h2><span class="q">같은 3개월의 소비 비중 비교 (집중형 지역)</span></div>
+        <div class="tw"><table class="rx" id="jct"></table></div>
+        <p class="small muted">지역 상위 3개월 비중을, 나머지 제주의 같은 3개월 비중·업종 구성을 고려한 비교 비중과 비교합니다. 세 값 모두 해당 지역의 소비 상위 3개월을 비교합니다. 업종 구성을 고려한 비교 비중은 지역의 연간 업종별 소비 비중에 나머지 제주 지역의 업종별 월 분포를 적용한 값입니다.</p>
+      </div>
+      <div class="panel">
+        <div class="ph"><h2>43곳 전체 결과</h2><span class="q">선택한 구간 기준</span></div>
+        <div class="tw"><table class="rx" id="allt"></table></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- 2. 지역별 상세 -->
+  <section class="tab" id="why" role="tabpanel" aria-labelledby="tab-why" hidden>
+    <div class="pickers" id="pickers" aria-label="지역 선택"></div>
+    <div class="panel rhead" id="rhead"></div>
+    <div class="g-4">
+      <div class="panel"><div class="ph"><h2>언제 소비가 큰가</h2><span class="q">월별 카드 소비 (억 원) · 관광객과 도민</span></div><div class="legend" id="lgmon"></div><div id="monchart"></div></div>
+      <div class="panel"><div class="ph"><h2>저조월과 상위월은 어떻게 다른가</h2><span class="q">상위 3개월 = 100일 때 저조 3개월 수준</span></div><div class="ratio" id="ratio"></div><p class="small muted" id="rationote"></p></div>
+    </div>
+    <div class="g-4">
+      <div class="panel"><div class="ph"><h2>어떤 업종인가</h2><span class="q">관광객 카드 소비의 업종별 비중 · 구간별</span></div><div class="legend" id="lgind"></div><div class="pair" id="indshare"></div><div id="indbars"></div></div>
+      <div class="panel"><div class="ph"><h2>상점 구성과 관광객 거래 구성</h2><span class="q">업종별 비중 (%) · 상점은 한 시점 자료</span></div><div class="legend" id="lgst"></div><div class="pair" id="store"></div></div>
+    </div>
+    <div class="panel"><div class="ph"><h2>월 × 업종</h2><span class="q">칸 = 그 달 그 업종 소비가 연간 관광객 소비에서 차지하는 비중 (%)</span></div><div class="tw"><table class="hm" id="hm"></table></div><p class="small muted" id="hmnote"></p></div>
+  </section>
+
+  <!-- 3. 대응 -->
+  <section class="tab" id="dx" role="tabpanel" aria-labelledby="tab-dx" hidden>
+    <p class="lead" id="dxlead"></p>
+    <div class="panel">
+      <div class="ph"><h2>지역별 진단과 대응</h2><span class="q">3개 구간 지속 집중형 4곳 · 행을 누르면 지역별 상세로 이동</span></div>
+      <div class="tw"><table class="rx" id="dxt"></table></div>
+    </div>
+    <details class="panel more"><summary>지역별 진단 방향 자세히</summary><div class="morebody dxl" id="dxl"></div></details>
+    <details class="panel more"><summary>참고: 도민 소비·소매업 중심 지역</summary><div class="morebody" id="legacy"></div></details>
+    <details class="panel more"><summary>해석할 때 주의할 점</summary><ul class="limits" id="limits"></ul></details>
+  </section>
+
+  <footer>
+    <span>기간: 1차 2023.08~2024.07 · 2차 2024.08~2025.07 · 3차 2025.08~2026.07 (각 12개월) · 관광객 = 내국인+외국인 합산, 카드 소비 기준</span>
+    <span>상위 3개월 비중 = 연간 관광객 소비 중 가장 큰 3개월의 비중 · 업종 집중도(HHI) = 업종별 소비 비중의 제곱합(높을수록 소수 업종 의존). 두 값이 모두 그 구간 43곳의 상위 25% 판정 기준 이상이면 집중형, 모두 하위 25% 판정 기준 이하면 분산형입니다.</span>
+  </footer>
+</div>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const I=__DATA__;
+const MAP=__MAP__;
+const NS='http://www.w3.org/2000/svg';
+const REG=Object.keys(I.F).sort((a,b)=>a.localeCompare(b,'ko'));
+const TYS=['집중형','중간','분산형'];
+const TYC={'집중형':'var(--cD)','중간':'#c3ccc9','분산형':'var(--cS)'};
+const TYD={'집중형':'소비가 일부 월에 집중되고 연간 소비의 업종 편중도도 높은 지역','중간':'시기·업종 동시 집중형 또는 동시 분산형에 해당하지 않는 지역','분산형':'43개 지역 중 월별·업종별 소비 집중도가 모두 상대적으로 낮은 지역'};
+const IC={'음식점업':'#0f5f70','소매업':'#2a78d6','숙박업':'#eb6834','예술스포츠여가업':'#1baf7a','기타서비스업':'#b9c3c1'};
+const SIC={'음식':'음식점업','소매':'소매업','숙박':'숙박업','예술·스포츠':'예술스포츠여가업'};
+const INAME=i=>i==='예술스포츠여가업'?'예술·스포츠·여가':i==='기타서비스업'?'기타 서비스':i.replace('업','');
+const PL=p=>p+'차 ('+I.PER[p]+')';
+const mlab=m=>String(m).slice(2,4)+'.'+String(m).slice(4,6);
+let PER=3, SEL=null, ovType='전체';
+
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(p,x,y,s,cls,anchor){const t=el('text',{x,y,class:cls||'','text-anchor':anchor||'start'},p);t.textContent=s;return t;}
+function h(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+const tip=document.getElementById('tip');
+function showTip(ev,rows){tip.replaceChildren();rows.forEach((r,i)=>tip.appendChild(h('div',i?'k':'h',r)));tip.hidden=false;moveTip(ev);}
+function moveTip(ev){const r=tip.getBoundingClientRect();let x=(ev.clientX||0)+14,y=(ev.clientY||0)+14;if(x+r.width>innerWidth-8)x=(ev.clientX||0)-r.width-14;if(y+r.height>innerHeight-8)y=(ev.clientY||0)-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px';}
+function hideTip(){tip.hidden=true;}
+function bindTip(n,rows){n.addEventListener('mouseenter',e=>showTip(e,typeof rows==='function'?rows():rows));n.addEventListener('mousemove',moveTip);n.addEventListener('mouseleave',hideTip);}
+function legendItem(node,color,label,cls){const s=h('span');const sw=h('span','sw'+(cls?' '+cls:''));if(color)sw.style.background=color;s.append(sw,document.createTextNode(label));node.appendChild(s);}
+function badge(t){const b=h('span','tybadge');const i=h('i');i.style.background=TYC[t];b.append(i,document.createTextNode(t));return b;}
+function months(s,cls){const w=h('span');w.style.cssText='display:inline-flex;gap:4px;flex-wrap:wrap';String(s).split(',').forEach(m=>w.appendChild(h('span','monthtag '+(cls||''),mlab(m.trim()))));return w;}
+const f=(k,p)=>I.F[k][p||PER];
+const ofType=t=>REG.filter(k=>f(k).ty===t);
+function placeLabels(svg,pts,bounds){
+  const boxes=pts.map(p=>({x1:p.x-7,x2:p.x+7,y1:p.y-7,y2:p.y+7}));
+  const ov=(a,b)=>Math.max(0,Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1))*Math.max(0,Math.min(a.y2,b.y2)-Math.max(a.y1,b.y1));
+  const cost=b=>boxes.reduce((s,o)=>s+ov(b,o),0)+(b.x1<bounds.x1||b.x2>bounds.x2||b.y1<bounds.y1||b.y2>bounds.y2?1e6:0);
+  const opts=[[9,4,'start'],[-9,4,'end'],[0,-11,'middle'],[0,20,'middle'],[9,-8,'start'],[9,15,'start'],[-9,-8,'end'],[-9,15,'end'],[0,-24,'middle'],[0,33,'middle']];
+  pts.forEach(p=>{const w=[...p.text].reduce((s,c)=>s+(/[ -~]/.test(c)?7:12.5),0)+2;let best=null;
+    for(const [dx,dy,an] of opts){const x0=an==='start'?p.x+dx:an==='end'?p.x+dx-w:p.x-w/2;const b={x1:x0,x2:x0+w,y1:p.y+dy-11,y2:p.y+dy+3};const c=cost(b);if(!best||c<best.c)best={c,dx,dy,an,b};if(c===0)break;}
+    boxes.push(best.b);txt(svg,p.x+best.dx,p.y+best.dy,p.text,p.cls||'lbl',best.an);});
+}
+
+/* ---------- 탭 ---------- */
+const tabs=['ov','where','why','dx'];
+function go(id,k){
+  tabs.forEach(t=>{document.getElementById(t).hidden=t!==id;document.getElementById('tab-'+t).setAttribute('aria-selected',t===id);});
+  if(k){SEL=k;drawWhy();}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+tabs.forEach(t=>document.getElementById('tab-'+t).addEventListener('click',()=>go(t)));
+function setPer(p){PER=+p;drawAll();}
+
+/* ---------- 0. 대시보드 ---------- */
+let ovSel=null;
+function ovDraw(){
+  const pill=document.getElementById('ovtypes');pill.replaceChildren();
+  ['전체',...TYS].forEach(t=>{const b=h('button',null,t);b.type='button';b.setAttribute('aria-pressed',t===ovType);b.addEventListener('click',()=>{ovType=t;ovSel=null;ovDraw();});pill.appendChild(b);});
+  const sel=document.getElementById('ovper');if(!sel.options.length){[1,2,3].forEach(p=>{const o=h('option',null,PL(p));o.value=p;sel.appendChild(o);});sel.addEventListener('change',()=>setPer(sel.value));}sel.value=PER;
+  const hit=k=>ovType==='전체'||f(k).ty===ovType;
+  const hits=REG.filter(hit).sort((a,b)=>TYS.indexOf(f(a).ty)-TYS.indexOf(f(b).ty)||f(b).top3-f(a).top3);
+  if(!ovSel||!hit(ovSel))ovSel=(ovType==='전체'?ofType('집중형')[0]:hits[0])||null;
+  const kp=document.getElementById('ovk');kp.replaceChildren();
+  [['분석 지역','43개','집중형 '+ofType('집중형').length+'곳 · 분산형 '+ofType('분산형').length+'곳'],['선택 유형',ovType,hits.length+'곳 해당'],['선택 지역',ovSel||'-',ovSel?f(ovSel).ty:'']].forEach(([a,b,c])=>{const k=h('div','k');k.append(h('span',null,a),h('b',null,b),h('i',null,c));kp.appendChild(k);});
+  const lg=document.getElementById('ovleg');lg.replaceChildren();TYS.forEach(t=>{const s=h('span');const i=h('i');i.style.background=TYC[t];s.append(i,document.createTextNode(t+' '+ofType(t).length+'곳'));lg.appendChild(s);});
+  const box=document.getElementById('ovmapbox');box.replaceChildren();
+  const svg=el('svg',{viewBox:`0 0 ${MAP.w} ${MAP.h}`,role:'group','aria-label':'제주 43개 읍면동 지도'});
+  const [ix,iy,iw,ih]=MAP.inset;el('rect',{x:ix,y:iy,width:iw,height:ih,rx:6,fill:'none',stroke:'var(--ink-3)','stroke-dasharray':'4 3'},svg);txt(svg,ix+8,iy+18,'추자면','lbl2');
+  [...REG].sort((a,b)=>(a===ovSel)-(b===ovSel)).forEach(k=>{const r=MAP.regions[k],x=f(k);
+    const p=el('path',{d:r.d,class:'rg on'+(hit(k)?'':' dim')+(k===ovSel?' sel':''),fill:hit(k)?TYC[x.ty]:'var(--land)'},svg);
+    bindTip(p,[k+' · '+x.ty,'상위 3개월 비중 '+x.top3+'%','업종 집중도(HHI) '+x.hhi.toFixed(3),'최대 업종 '+x.maxInd+' '+x.maxIndPct+'%']);
+    p.addEventListener('click',()=>{ovSel=k;ovDraw();});});
+  REG.filter(k=>hit(k)&&f(k).ty!=='중간').forEach(k=>{const [cx,cy]=MAP.regions[k].c;const t=txt(svg,cx,cy+4,k,'lbl','middle');t.style.pointerEvents='none';});
+  box.appendChild(svg);
+  const d=document.getElementById('ovd');d.replaceChildren();
+  if(ovSel){const k=ovSel,x=f(k);
+    d.appendChild(h('h2',null,k));
+    const tc=h('div');tc.style.cssText='display:flex;gap:6px;flex-wrap:wrap';tc.appendChild(badge(x.ty));tc.appendChild(h('span','chip','시기 '+x.mty));tc.appendChild(h('span','chip','업종 '+x.ity));d.appendChild(tc);
+    d.appendChild(h('p','small',TYD[x.ty]));
+    const r2=h('div','row2');const a=h('div');a.append(h('span',null,'상위 3개월 비중'),h('b',null,x.top3+'% (기준 '+I.TH[PER].m75.toFixed(1)+'%)'));const b=h('div');b.append(h('span',null,'업종 집중도(HHI)'),h('b',null,x.hhi.toFixed(3)+' (기준 '+I.TH[PER].h75.toFixed(3)+')'));r2.append(a,b);d.appendChild(r2);
+    const mm=h('div');mm.append(h('span','small muted','소비가 큰 3개월 '),months(x.topM,'hi'));d.appendChild(mm);
+    d.appendChild(h('b',null,'업종별 관광객 소비 비중'));const bars=h('div','bars');
+    I.INDS.forEach(i=>{const v=I.CAT[k][PER].share[i]||0,m=I.CATMED[PER][i]||0;const r=h('div','r');r.style.gridTemplateColumns='104px minmax(0,1fr) 48px';const bb=h('div','b');const bi=h('i');bi.style.width=Math.min(100,v)+'%';bi.style.background=IC[i];const u=h('u');u.style.left=Math.min(100,m)+'%';bb.append(bi,u);r.append(h('span',null,INAME(i)),bb,h('span',null,v.toFixed(1)+'%'));bars.appendChild(r);});
+    d.appendChild(bars);d.appendChild(h('span','small muted','검은 선 = 43곳 중앙값 비중'));
+    const g=h('button','gobtn','지역 상세 보기 ›');g.type='button';g.addEventListener('click',()=>go('why',k));d.appendChild(g);}
+  const ol=document.getElementById('ovlist');ol.replaceChildren();ol.appendChild(h('h2',null,ovType==='전체'?'집중형·분산형 지역':'해당 지역'));
+  hits.filter(k=>ovType!=='전체'||f(k).ty!=='중간').forEach(k=>{const b=h('button',null,k);b.type='button';b.setAttribute('aria-pressed',k===ovSel);b.addEventListener('click',()=>{ovSel=k;ovDraw();});ol.appendChild(b);});
+}
+
+/* ---------- 1. 집중 지역 ---------- */
+function perSeg(id){const s=document.getElementById(id);s.replaceChildren();[1,2,3].forEach(p=>{const b=h('button',null,p+'차 '+I.PER[p].replace('~','–'));b.type='button';b.setAttribute('aria-pressed',p===PER);b.addEventListener('click',()=>setPer(p));s.appendChild(b);});}
+function scatter(){
+  perSeg('perSeg');
+  const T=I.TH[PER],ks=REG,X0=ks.map(k=>f(k).top3),Y0=ks.map(k=>f(k).hhi);
+  const W=1100,H=500,m={l:84,r:18,t:16,b:66};
+  const xlo=Math.floor(Math.min(...X0)-1),xhi=Math.ceil(Math.max(...X0)+1),ylo=Math.max(0,Math.floor((Math.min(...Y0)-.03)*20)/20),yhi=Math.ceil((Math.max(...Y0)+.03)*20)/20;
+  const X=v=>m.l+(v-xlo)/(xhi-xlo)*(W-m.l-m.r),Y=v=>H-m.b-(v-ylo)/(yhi-ylo)*(H-m.t-m.b);
+  const box=document.getElementById('sc');box.replaceChildren();
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'읍면동별 상위 3개월 소비 비중과 업종 집중도(HHI)'});
+  el('rect',{x:X(T.m75),y:m.t,width:W-m.r-X(T.m75),height:Y(T.h75)-m.t,class:'zonefill'},svg);
+  const g=el('g',{class:'grid'},svg),ax=el('g',{class:'axis'},svg);
+  for(let v=Math.ceil(xlo);v<=xhi;v+=1){if(v%2)continue;el('line',{x1:X(v),x2:X(v),y1:m.t,y2:H-m.b},g);txt(ax,X(v),H-m.b+17,v+'%','','middle');}
+  for(let v=ylo;v<=yhi+1e-9;v+=.05){el('line',{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v)},g);txt(ax,m.l-8,Y(v)+4,v.toFixed(2),'','end');}
+  el('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:'base'},svg);
+  txt(svg,(m.l+W-m.r)/2,H-8,'가로 = 상위 3개월 소비 비중 (%) · 오른쪽일수록 특정 시기에 몰림','axt','middle');
+  const yc=(m.t+H-m.b)/2;const yl=txt(svg,14,yc,'세로 = 업종 집중도(HHI) · 위일수록 특정 업종에 몰림','axt','middle');yl.setAttribute('transform',`rotate(-90 14 ${yc})`);
+  [[T.m75,'x','상위 25% 기준 '+T.m75.toFixed(1)+'%'],[T.m25,'x','하위 25% 기준 '+T.m25.toFixed(1)+'%'],[T.h75,'y','상위 25% 기준 '+T.h75.toFixed(3)],[T.h25,'y','하위 25% 기준 '+T.h25.toFixed(3)]].forEach(([v,a,l],i)=>{
+    const e=a==='x'?el('line',{x1:X(v),x2:X(v),y1:m.t,y2:H-m.b,class:'ref'},svg):el('line',{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),class:'ref'},svg);if(i%2)e.style.opacity=.45;
+    if(a==='x')txt(svg,X(v)+5,H-m.b-6,l,'reflbl');else txt(svg,m.l+6,Y(v)-5,l,'reflbl');});
+  txt(svg,X(T.m75)+12,m.t+26,'집중형','zonebig','start');txt(svg,X(T.m75)+12,m.t+46,'시기와 업종 모두 43곳 상위 25%','zonesub','start');
+  [...ks].sort((a,b)=>(f(a).ty==='중간')-(f(b).ty==='중간')).reverse().forEach(k=>{const x=f(k);const big=x.ty!=='중간';
+    el('circle',{cx:X(x.top3),cy:Y(x.hhi),r:big?7:4.5,fill:TYC[x.ty],stroke:'var(--surface)','stroke-width':2},svg);
+    const hit=el('circle',{cx:X(x.top3),cy:Y(x.hhi),r:11,class:'hit'},svg);
+    bindTip(hit,[k+' · '+x.ty,'상위 3개월 비중 '+x.top3+'%','업종 집중도(HHI) '+x.hhi.toFixed(3),'최대 업종 '+x.maxInd+' '+x.maxIndPct+'%','관광객 소비 '+x.tourEok.toLocaleString('ko-KR')+'억 원']);
+    hit.addEventListener('click',()=>{hideTip();go('why',k);});});
+  placeLabels(svg,ks.filter(k=>f(k).ty!=='중간').map(k=>({x:X(f(k).top3),y:Y(f(k).hhi),text:k})),{x1:m.l,x2:W-m.r,y1:m.t,y2:H-m.b});
+  box.appendChild(svg);
+  const lg=document.getElementById('lgsc');lg.replaceChildren();TYS.forEach(t=>legendItem(lg,TYC[t],t+' '+ofType(t).length+'곳'));legendItem(lg,null,'점선 = 43곳 Q75·하위 25% 기준 기준선','dash');
+  document.getElementById('scnote').textContent='점을 누르면 지역별 상세로 이동합니다. 상위 3개월은 연속된 달이 아닐 수 있습니다.';
+}
+function cmx(){
+  const t=document.getElementById('cmx');t.replaceChildren();
+  const lg=document.getElementById('lgmx');lg.replaceChildren();TYS.forEach(x=>legendItem(lg,TYC[x],x,'sq'));
+  const th=h('thead');const tr=h('tr');tr.appendChild(h('th','l','지역'));[1,2,3].forEach(p=>{const c=h('th',null,p+'차');c.title=I.PER[p];tr.appendChild(c);});tr.appendChild(h('th',null,'집중형 유지 횟수 (1·2·3차)'));th.appendChild(tr);t.appendChild(th);
+  const tb=h('tbody');
+  const score=k=>[1,2,3].reduce((s,p)=>s+(I.F[k][p].ty==='집중형'?10:I.F[k][p].ty==='분산형'?1:0),0);
+  const rows=REG.filter(k=>score(k)>0||Object.values(I.SEN[k]).some(v=>v>0)).sort((a,b)=>score(b)-score(a)||a.localeCompare(b,'ko'));
+  rows.forEach(k=>{const r=h('tr','t');const n=h('td','l');n.appendChild(h('b',null,k));r.appendChild(n);
+    [1,2,3].forEach(p=>{const c=h('td');const s=h('span','c');s.style.background=TYC[I.F[k][p].ty];s.title=p+'차 '+I.F[k][p].ty;c.appendChild(s);r.appendChild(c);});
+    const sv=h('td','n',[1,2,3].map(p=>I.SEN[k][p]+'/9회').join(' · '));r.appendChild(sv);r.addEventListener('click',()=>go('why',k));tb.appendChild(r);});
+  const rest=REG.length-rows.length;const r=h('tr');const c=h('td','l base0','그 외 '+rest+'곳: 세 구간 모두 중간, 선정 조합 0회');c.colSpan=5;r.appendChild(c);tb.appendChild(r);
+  t.appendChild(tb);
+}
+function tables(){
+  const jt=document.getElementById('jct');jt.replaceChildren();
+  jt.innerHTML='<thead><tr><th>지역</th><th>주력 업종</th><th>상위 3개월</th><th>지역 상위 3개월 비중</th><th>나머지 제주 같은 3개월</th><th>업종 구성을 고려한 비교 비중</th></tr></thead>';
+  const tb=h('tbody');ofType('집중형').forEach(k=>{const j=I.JC[k][PER];const r=h('tr');
+    [k,j.main+' '+j.mainPct+'%',null,j.reg+'%',j.rest+'%',j.adj+'%'].forEach((v,i)=>{const c=h('td',i?'nw':'');if(i===2)c.appendChild(months(f(k).topM,'hi'));else c.textContent=v;r.appendChild(c);});
+    r.addEventListener('click',()=>go('why',k));tb.appendChild(r);});jt.appendChild(tb);
+  const at=document.getElementById('allt');at.replaceChildren();
+  at.innerHTML='<thead><tr><th>지역</th><th>종합 유형</th><th>시기 유형</th><th>업종 유형</th><th>상위 3개월 비중</th><th>업종 집중도(HHI)</th><th>최대 소비 업종</th></tr></thead>';
+  const tb2=h('tbody');[...REG].sort((a,b)=>TYS.indexOf(f(a).ty)-TYS.indexOf(f(b).ty)||f(b).top3-f(a).top3).forEach(k=>{const x=f(k);const r=h('tr');
+    const c0=h('td',null,k);const c1=h('td');c1.appendChild(badge(x.ty));r.append(c0,c1);[x.mty,x.ity,x.top3.toFixed(1)+'%',x.hhi.toFixed(3),x.maxInd+' '+x.maxIndPct.toFixed(1)+'%'].forEach(v=>r.appendChild(h('td','nw',v)));
+    r.addEventListener('click',()=>go('why',k));tb2.appendChild(r);});at.appendChild(tb2);
+}
+
+/* ---------- 2. 지역별 상세 ---------- */
+function drawWhy(){
+  if(!SEL)SEL=ofType('집중형')[0]||REG[0];
+  const pk=document.getElementById('pickers');pk.replaceChildren();
+  const row=(label,list)=>{const r=h('div','prow');r.appendChild(h('span','pl',label));list.forEach(k=>{const b=h('button',null,k);b.type='button';b.setAttribute('aria-pressed',k===SEL);b.addEventListener('click',()=>{SEL=k;drawWhy();});r.appendChild(b);});pk.appendChild(r);};
+  row('집중형',ofType('집중형'));if(ofType('분산형').length)row('분산형',ofType('분산형'));
+  const r3=h('div','prow');r3.appendChild(h('span','pl','중간형'));const s=h('select');s.style.cssText='font:inherit;font-size:14px;padding:5px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--surface);color:var(--ink)';
+  const placeholder=h('option',null,'중간형 지역 선택');placeholder.value='';placeholder.disabled=true;s.appendChild(placeholder);ofType('중간').forEach(k=>{const o=h('option',null,k);o.value=k;s.appendChild(o);});s.value=f(SEL).ty==='중간'?SEL:'';s.setAttribute('aria-label','중간형 지역 선택');s.addEventListener('change',()=>{if(s.value){SEL=s.value;drawWhy();}});r3.appendChild(s);
+  const ps=h('div','seg');ps.style.marginLeft='auto';[1,2,3].forEach(p=>{const b=h('button',null,p+'차');b.type='button';b.title=I.PER[p];b.setAttribute('aria-pressed',p===PER);b.addEventListener('click',()=>setPer(p));ps.appendChild(b);});r3.appendChild(ps);pk.appendChild(r3);
+  const k=SEL,x=f(k),T=I.TH[PER];
+  const rh=document.getElementById('rhead');rh.replaceChildren();
+  const t=h('div','t');t.append(h('h2',null,k),badge(x.ty),h('span','chip','시기 '+x.mty),h('span','chip','업종 '+x.ity),h('span','small muted',PL(PER)));rh.appendChild(t);
+  rh.appendChild(h('p','muted',TYD[x.ty]+'.'));
+  const st=h('div','stats');
+  [[x.top3.toFixed(1)+'%','상위 3개월 비중 (상위 25% 기준 '+T.m75.toFixed(1)+'%)'],[x.hhi.toFixed(3),'업종 집중도(HHI) (상위 25% 기준 '+T.h75.toFixed(3)+')'],[x.maxInd+' '+x.maxIndPct.toFixed(1)+'%','최대 소비 업종'],[x.tourEok.toLocaleString('ko-KR')+'억 원','관광객 카드 소비 (12개월)'],[x.tourShare.toFixed(1)+'%','관광객 소비 비중 (도민 포함 대비)'],[I.SEN[k][PER]+'/9회','기준 변경 시 집중형 유지 횟수']].forEach(([v,l])=>{const d=h('div','stat');d.append(h('div','v',v),h('div','l',l));st.appendChild(d);});
+  rh.appendChild(st);rh.appendChild(h('p','small muted',"시기·업종 기준을 각각 상위 30%·25%·20%로 바꾼 총 9개 조합에서 집중형으로 분류된 횟수입니다. 9/9회는 기준 변화에도 분류가 안정적이고, 6/9회는 일부 기준에서 분류가 달라짐을 뜻합니다. 확률·정확도가 아니며 기본 판정은 두 지표 모두 상위 25%입니다. 경계값은 구간마다 다시 계산합니다."));
+  const mm=h('div');mm.style.cssText='display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;font-size:13px';const a1=h('span');a1.append(h('span','muted','상위 3개월 '),months(x.topM,'hi'));const a2=h('span');a2.append(h('span','muted','저조 3개월 '),months(x.lowM,'lo'));mm.append(a1,a2);rh.appendChild(mm);
+  monChart(k);ratio(k);indShare(k);store(k);heat(k);
+}
+function monChart(k){
+  const M=I.MON[k][PER],x=f(k),hi=new Set(x.topM.split(',')),lo=new Set(x.lowM.split(','));
+  const W=560,H=280,m={l:52,r:12,t:12,b:40};const n=M.m.length;const all=[...M.t,...M.r].filter(v=>v!=null);const ymax=Math.max(...all)*1.12;
+  const X=i=>m.l+(i+.5)/n*(W-m.l-m.r),Y=v=>H-m.b-v/ymax*(H-m.t-m.b),bw=(W-m.l-m.r)/n;
+  const box=document.getElementById('monchart');box.replaceChildren();const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':k+' 월별 관광객·도민 카드 소비'});
+  M.m.forEach((mm,i)=>{if(hi.has(mm))el('rect',{x:X(i)-bw/2+1,y:m.t,width:bw-2,height:H-m.b-m.t,fill:'rgba(42,120,214,.10)',rx:3},svg);else if(lo.has(mm))el('rect',{x:X(i)-bw/2+1,y:m.t,width:bw-2,height:H-m.b-m.t,fill:'rgba(127,140,137,.13)',rx:3},svg);});
+  const g=el('g',{class:'grid'},svg),ax=el('g',{class:'axis'},svg);const step=ymax>200?100:ymax>80?20:ymax>30?10:ymax>12?5:ymax>5?2:1;
+  for(let v=0;v<=ymax;v+=step){el('line',{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v)},g);txt(ax,m.l-6,Y(v)+4,v,'','end');}
+  M.m.forEach((mm,i)=>txt(ax,X(i),H-m.b+16,mlab(mm),'','middle'));
+  el('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:'base'},svg);
+  const line=(arr,c,dash)=>{let d='';arr.forEach((v,i)=>{if(v==null)return;d+=(d?'L':'M')+X(i)+','+Y(v);});el('path',{d,fill:'none',stroke:c,'stroke-width':2.4,'stroke-dasharray':dash||''},svg);arr.forEach((v,i)=>{if(v==null)return;el('circle',{cx:X(i),cy:Y(v),r:3.2,fill:c},svg);});};
+  line(M.r,'var(--ink-3)','5 4');line(M.t,'var(--cD)');
+  M.m.forEach((mm,i)=>{const hr=el('rect',{x:X(i)-bw/2,y:m.t,width:bw,height:H-m.b-m.t,class:'hit'},svg);bindTip(hr,[mlab(mm)+(hi.has(mm)?' · 상위월':lo.has(mm)?' · 저조월':''),'관광객 '+(M.t[i]??'-')+'억 원 · '+(M.tn[i]?M.tn[i].toLocaleString('ko-KR')+'건':'-'),'도민 '+(M.r[i]??'-')+'억 원']);});
+  box.appendChild(svg);
+  const lg=document.getElementById('lgmon');lg.replaceChildren();legendItem(lg,'var(--cD)','관광객');legendItem(lg,null,'도민','dash');const a=h('span');const s1=h('span','sw sq');s1.style.background='rgba(42,120,214,.25)';a.append(s1,document.createTextNode('상위 3개월'));lg.appendChild(a);const b=h('span');const s2=h('span','sw sq');s2.style.background='rgba(127,140,137,.3)';b.append(s2,document.createTextNode('저조 3개월'));lg.appendChild(b);
+}
+function ratio(k){
+  const R=I.HL[k][PER],box=document.getElementById('ratio');box.replaceChildren();
+  const items=[['관광 소비',R.spend,'var(--cD)'],['관광 거래 수',R.tx,'var(--cD)'],['관광 건당 금액',R.per,'var(--cD)'],['도민 소비',R.res,'var(--ink-3)'],['합산 소비',R.sum,'var(--ink-2)']];
+  const mx=Math.max(120,...items.map(i=>i[1]))*1.05;
+  items.forEach(([l,v,c])=>{const r=h('div','r');const b=h('div','b');const i=h('i');i.style.width=(v/mx*100)+'%';i.style.background=c;i.style.opacity=l.startsWith('관광')?1:.55;const u=h('u');u.style.left=(100/mx*100)+'%';b.append(i,u);r.append(h('span',null,l),b,h('span','v',v.toFixed(1)));box.appendChild(r);});
+  document.getElementById('rationote').textContent='검은 선 = 100 (상위월과 같은 수준). '+R.why+'. 상위월 대비 저조월 비교이며 전년 대비 감소나 원인 분석이 아닙니다.';
+}
+function indShare(k){
+  const lg=document.getElementById('lgind');lg.replaceChildren();I.INDS.forEach(i=>legendItem(lg,IC[i],INAME(i),'sq'));
+  const box=document.getElementById('indshare');box.replaceChildren();
+  [1,2,3].forEach(p=>{const r=h('div','srow'+(p===PER?' cur':''));r.appendChild(h('span','pl',p+'차 '+I.PER[p].slice(2,7).replace('.','.')+'~'));const sb=h('div','sbar');
+    I.INDS.forEach(i=>{const v=I.CAT[k][p].share[i]||0;const s=h('span');s.style.width=v+'%';s.style.background=IC[i];bindTip(s,[p+'차 · '+INAME(i),v.toFixed(1)+'% (43곳 중앙값 '+I.CATMED[p][i].toFixed(1)+'%)']);sb.appendChild(s);});
+    r.appendChild(sb);box.appendChild(r);});
+  box.appendChild(h('span','small muted','금액 비중입니다(거래 수 비중과 다를 수 있음). 막대에 마우스를 올리면 값과 43곳 중앙값이 나옵니다.'));
+}
+function store(k){
+  const lg=document.getElementById('lgst');lg.replaceChildren();legendItem(lg,'var(--ink-3)','상점 비중','sq');legendItem(lg,'var(--cD)','관광객 거래 비중','sq');
+  const box=document.getElementById('store');box.replaceChildren();const S=(I.ST[k]||{})[PER]||[];
+  if(!S.length){box.appendChild(h('p','small muted','이 구간 상점 자료가 없습니다.'));return;}
+  S.forEach(s=>{const r=h('div','r');r.appendChild(h('span',null,s.ind));const bs=h('div','bs');
+    [[s.store,'var(--ink-3)','상점 '+s.n+'곳'],[s.tx,'var(--cD)','거래']].forEach(([v,c,l])=>{const bl=h('div','bl');const t=h('div','t');const i=h('i');i.style.width=v+'%';i.style.background=c;t.appendChild(i);bl.append(t,h('b',null,v.toFixed(1)+'%'));bindTip(bl,[k+' · '+s.ind,l+' '+v.toFixed(1)+'%']);bs.appendChild(bl);});
+    r.appendChild(bs);box.appendChild(r);});
+  box.appendChild(h('span','small muted','상점 비중과 거래 비중의 차이는 수요 부족을 뜻하지 않습니다.'));
+}
+function heat(k){
+  const M=I.MON[k][PER],C=I.CAT[k][PER].cell,t=document.getElementById('hm');t.replaceChildren();
+  const vals=I.INDS.flatMap(i=>C[i]).filter(v=>v!=null),mx=Math.max(...vals);
+  const th=h('thead'),tr=h('tr');tr.appendChild(h('th','l',''));M.m.forEach(m=>tr.appendChild(h('th',null,mlab(m))));th.appendChild(tr);t.appendChild(th);
+  const tb=h('tbody');I.INDS.forEach(i=>{const r=h('tr');r.appendChild(h('th','l',INAME(i)));C[i].forEach((v,j)=>{const c=h('td');if(v==null){c.className='na';c.textContent='자료 없음';c.title='제공 원자료에 관광객 행 없음 (0과 다름)';}else{const a=.06+.94*(v/mx);c.style.background=`rgba(15,95,112,${a.toFixed(3)})`;c.style.color=a>.55?'#fff':'var(--ink)';c.textContent=v===0?'0.00':v<.01?'<0.01':v<.1?v.toFixed(2):v.toFixed(1);bindTip(c,[INAME(i)+' · '+mlab(M.m[j]),'연간 관광객 소비의 '+v.toFixed(2)+'%']);}r.appendChild(c);});tb.appendChild(r);});
+  t.appendChild(tb);
+  const missing=I.INDS.reduce((n,i)=>n+C[i].filter(v=>v==null).length,0);
+  document.getElementById('hmnote').textContent='각 칸은 해당 월·업종 소비가 연간 관광객 소비에서 차지하는 비중입니다. 0.1% 미만도 표시하며, 0.01% 미만인 양수는 <0.01로 표시합니다.'+(missing?' 자료 없음 '+missing+'칸: 제공 원자료에 내국인·외국인 관광객 행이 모두 없는 조합입니다. 0으로 해석하지 않습니다.':'');
+}
+
+/* ---------- 3. 대응 ---------- */
+const HYP={
+'구좌읍':"음식점업이 주력 업종이며, 2025.08~2026.07의 상위월·저조월 관광소비 차이는 건당 금액보다 거래 수 차이에서 더 크게 설명됩니다. 거래 수는 방문객 수가 아니므로 방문 수요·영업일·음식 이용 기회를 추가 자료로 확인해야 합니다. 식사 외 소비로 이어지는 경로가 약하다고 현재 자료만으로 판단할 수는 없습니다. 저조기 음식·숙박·체험·지역상품 연계는 효과를 검증할 시범 대응으로 검토할 수 있습니다.",
+'우도면':"2025.08~2026.07에는 음식점업 중심의 소비 구조와 함께 상위월·저조월의 관광소비 및 거래 수 차이가 나타납니다. 운항일·기상·방문 자료를 확인한 뒤, 운영 가능한 저조기에 음식·지역상품·체험 연계를 시범 운영할 수 있습니다. 운항이나 기상이 소비 차이의 원인인지는 현재 자료만으로 확정할 수 없습니다.",
+'화북동':"2025.08~2026.07의 관광소비는 소매업 비중이 높고, 관광소비 저조월의 도민 소비는 관광소비 상위월보다 높았습니다. 관광소비와 도민 소비를 구분해 살펴보고, 소매시설과 음식·여가 업종의 연계를 검토할 수 있습니다. 이 결과만으로 기존 상점의 고객 기반이나 정책 우선순위를 확정할 수는 없습니다.",
+'예래동':"숙박업의 관광소비금액 비중이 높고, 2025.08~2026.07의 저조월에는 지역 전체 관광 거래 수와 건당 금액이 상위월보다 함께 낮습니다. 이 결과만으로 숙박 수요가 주변 상점 소비로 이어지지 않는다고 판단할 수는 없습니다. 투숙 실적·예약 및 결제 시점·상품 구성을 추가 확인하고, 저조기 숙박상품과 주변 상점 안내·연계를 시범 운영한 뒤 숙박·비숙박 소비 효과를 각각 검증할 수 있습니다."};
+function dx(){
+  document.getElementById('dxlead').textContent=I.DX.overall;
+  const t=document.getElementById('dxt');t.replaceChildren();
+  t.innerHTML='<thead><tr><th>지역</th><th>확인된 사실</th><th>가능한 원인과 확인 필요 자료</th><th>대응 제안</th><th>효과 지표</th></tr></thead>';
+  const tb=h('tbody');I.DX.rows.forEach(r=>{const tr=h('tr');const c0=h('td','nw');const st=h('div','stack');st.append(h('b',null,r.k),badge(I.F[r.k][3].ty),h('span','small muted','기준 변경 시 집중형 유지: '+I.SEN[r.k][3]+'/9회 (3차)'));c0.appendChild(st);tr.appendChild(c0);
+    [r.fact,r.cause,r.act,r.kpi].forEach(v=>tr.appendChild(h('td','w',v)));tr.addEventListener('click',()=>go('why',r.k));tb.appendChild(tr);});t.appendChild(tb);
+  const dl=document.getElementById('dxl');dl.replaceChildren();Object.entries(HYP).forEach(([k,v])=>{const it=h('div','it');it.append(h('b',null,k),h('p','muted',v));dl.appendChild(it);});
+  const lg=document.getElementById('legacy');lg.replaceChildren();
+  lg.appendChild(h('p','muted','시기·업종 집중형과 별도 기준으로 선별한 지역입니다. 도민 매출 비중 75% 이상 · 소매업 매출 비중 45% 이상 · 총매출이 43개 지역의 65백분위수 기준값(약 '+I.LEG.cut.toLocaleString('ko-KR')+'억 원) 이하인 조건을 동시에 충족합니다. 집중형 판정과 섞지 않습니다.'));
+  const tw=h('div','tw');const tt=h('table','rx');tt.innerHTML='<thead><tr><th>지역</th><th>총매출</th><th>매출 순위</th><th>도민 매출 비중</th><th>소매업 매출 비중</th><th>업종 집중도(HHI)</th><th>최대 매출 업종</th></tr></thead>';
+  const tb2=h('tbody');I.LEG.rows.forEach(r=>{const tr=h('tr');[r.k,r.sales.toLocaleString('ko-KR')+'억 원',r.rank+'위',r.res+'%',r.retail+'%',r.hhi.toFixed(3),r.maxInd].forEach(v=>tr.appendChild(h('td','nw',v)));tb2.appendChild(tr);});tt.appendChild(tb2);tw.appendChild(tt);lg.appendChild(tw);
+  lg.appendChild(h('p','small muted','도민 매출 비중과 소매업 매출 비중이 높은 지역입니다. 관광객 소비금액이 다른 지역보다 작다는 판정은 아닙니다.'));
+  const li=document.getElementById('limits');li.replaceChildren();
+  [["결측과 집계 범위", "제공 자료에 없는 지역·월·업종 조합은 0이 아닌 자료 없음으로 표시합니다. 실제 무거래·비공개·누락 중 어느 이유인지는 확인되지 않았습니다. 소비 비중과 집중도는 관측된 소비 기준이며, 미관측 금액이 있다면 달라질 수 있습니다."], ["분류 의미", "43개 지역 중 시기·업종 편중이 상대적으로 큰 지역을 뜻하며, 상권 부진이나 위험을 확정하지 않습니다."], ["비교 기준", "대응 표는 3차년도 안의 관광소비 상위 3개월과 저조 3개월 비교입니다. 전년 대비 감소가 아닙니다."], ["원인 해석", "방문 수요·가격·예약 및 결제 시점·상품 구성은 추가 자료로 확인해야 합니다. 거래 수는 방문객 수가 아니며, 건당 금액은 가격과 다릅니다. 숙소 안팎 소비도 카드 업종만으로 구분할 수 없습니다."], ["자료 범위", "관광객은 내국인·외국인 합산, 카드 소비 기준입니다. 상점 자료는 한 시점의 목록으로 연도별 상점 변화를 나타내지 않습니다."], ["도민 소비", "상대적 유지가 관광소비 감소를 의도적으로 보완했다는 의미는 아닙니다."], ["정책 효과", "시행 전후 동월과 유사 미참여 지역을 비교해 저조기 소비·거래, 연간 소비 유지, 연계 업종 실적을 함께 확인해야 합니다."], ["기준 변화", "예래동 3차년도는 기준 변경 시 6/9회 집중형으로 분류됩니다. 기본 기준에서는 집중형이나 경계에 민감합니다."]].forEach(([label,text])=>{const item=h('li');item.append(h('strong',null,label+': '),document.createTextNode(text));li.appendChild(item);});
+}
+
+function drawAll(){ovDraw();scatter();cmx();tables();drawWhy();dx();}
+drawAll();
+</script>
+</body>
+</html>

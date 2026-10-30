@@ -1600,7 +1600,8 @@ def region_detail_html(summary: dict, region: str) -> str:
             f"<div>{esc(c['fact'])}</div>"
             f"<div><b>확인할 점</b> {esc(c['cause'])}</div>"
             f"<div><b>대응 방향</b> {esc(c['act'])}</div>"
-            f"<div class='muted'>3개 구간 연속 집중형 · 최신 구간 9개 기준 조합 중 {c['sen']}개에서 집중형</div></div>"
+            f"<div class='muted'>3개 구간 연속 집중형 · 최신 구간 기준 변경 시 집중형 유지: {c['sen']}/9회</div>"
+            "<div class='muted'>시기·업종 기준을 각각 상위 30%·25%·20%로 바꾼 9개 조합의 결과입니다. 확률·정확도가 아닙니다.</div></div>"
         )
     out.append("</div>")
     return "".join(out)
