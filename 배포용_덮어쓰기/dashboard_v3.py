@@ -1623,17 +1623,44 @@ BANNER_HTML = (
 )
 
 
+@st.cache_data
+def edge_paths() -> tuple[list, list]:
+    """행정구역 경계선을 짧은 선분으로 쪼개 바깥(해안선) / 안쪽(구역 사이)으로 나눈다.
+    (경계를 지역 면 레이어에 함께 그리면 지도 클릭 선택이 되지 않아 별도 선 레이어로 그린다.)"""
+    import collections
+
+    with GEOJSON_FILE.open(encoding="utf-8") as file:
+        gj = json.load(file)
+    count: collections.Counter = collections.Counter()
+    seg: dict = {}
+    for f in gj["features"]:
+        g = f["geometry"]
+        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        for poly in polys:
+            for ring in poly:
+                for a, b in zip(ring, ring[1:]):
+                    pa, pb = (a[0], a[1]), (b[0], b[1])
+                    key = tuple(sorted([(round(pa[0], 6), round(pa[1], 6)), (round(pb[0], 6), round(pb[1], 6))]))
+                    count[key] += 1
+                    seg.setdefault(key, [list(pa), list(pb)])
+    outer = [{"path": seg[k]} for k, n in count.items() if n == 1]
+    inner = [{"path": seg[k]} for k, n in count.items() if n > 1]
+    return outer, inner
+
+
 def coast_layer(boundary_data: dict) -> pdk.Layer:
-    """해안선을 따라 짙은 청록 테두리를 깔아 섬 윤곽을 또렷하게 한다."""
+    """해안선(바깥 경계)을 짙은 청록 선으로 깔아 섬 윤곽을 또렷하게 한다."""
     return pdk.Layer(
-        "GeoJsonLayer",
-        boundary_data,
+        "PathLayer",
+        edge_paths()[0],
+        id="jeju-coast",
         pickable=False,
-        stroked=True,
-        filled=False,
-        get_line_color=[11, 110, 160, 255],
-        get_line_width=5,
-        **({"line_width_units": pdk.types.String("pixels")} if hasattr(getattr(pdk, "types", None), "String") else {}),
+        get_path="path",
+        get_color=[11, 110, 160, 255],
+        get_width=4,
+        width_units=_S("pixels"),
+        cap_rounded=True,
+        joint_rounded=True,
     )
 
 
@@ -1643,6 +1670,7 @@ def sea_layer() -> pdk.Layer:
     return pdk.Layer(
         "PolygonLayer",
         [{"polygon": box}],
+        id="jeju-sea",
         get_polygon="polygon",
         get_fill_color=[160, 216, 244, 255],
         stroked=False,
@@ -1695,9 +1723,9 @@ def select_rings(boundary_data: dict, selected: str) -> list:
     data = {"type": "FeatureCollection", "features": feats}
     unit = {"line_width_units": _S("pixels")}
     return [
-        pdk.Layer("GeoJsonLayer", data, pickable=False, stroked=True, filled=False,
+        pdk.Layer("GeoJsonLayer", data, id="jeju-ring-base", pickable=False, stroked=True, filled=False,
                   get_line_color=[8, 38, 58, 255], get_line_width=7, **unit),
-        pdk.Layer("GeoJsonLayer", _dash_features(feats), pickable=False, stroked=True, filled=False,
+        pdk.Layer("GeoJsonLayer", _dash_features(feats), id="jeju-ring-dash", pickable=False, stroked=True, filled=False,
                   get_line_color=[255, 255, 255, 255], get_line_width=3, **unit),
     ]
 
@@ -1729,19 +1757,28 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
     layer = pdk.Layer(
         "GeoJsonLayer",
         boundary_data,
+        id="jeju-regions",
         pickable=True,
         auto_highlight=True,
         highlight_color=[255, 255, 255, 90],
-        stroked=True,
+        stroked=False,  # 테두리를 같이 그리면 클릭 선택이 되지 않아 별도 레이어로 그린다
         filled=True,
         get_fill_color="properties.fill_color",
-        get_line_color="properties.line_color",
-        get_line_width="properties.line_w",
-        **({"line_width_units": pdk.types.String("pixels")} if hasattr(getattr(pdk, "types", None), "String") else {}),
+    )
+    borders = pdk.Layer(
+        "PathLayer",
+        edge_paths()[1],
+        id="jeju-borders",
+        pickable=False,
+        get_path="path",
+        get_color=[255, 255, 255, 230],
+        get_width=1,
+        width_units=_S("pixels"),
     )
     labels = pdk.Layer(
         "TextLayer",
         [pt for pt in label_points(boundary_data) if pt["name"] in colored or pt["name"] == selected],
+        id="jeju-labels",
         pickable=False,
         get_position="pos",
         get_text="name",
@@ -1760,7 +1797,7 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
         background_padding=[4, 2],
     )
     return pdk.Deck(
-        layers=[sea_layer(), coast_layer(boundary_data), layer, *select_rings(boundary_data, selected), labels],
+        layers=[sea_layer(), coast_layer(boundary_data), layer, borders, *select_rings(boundary_data, selected), labels],
         initial_view_state=pdk.ViewState(latitude=33.37, longitude=126.56, zoom=9.1, min_zoom=8.8, max_zoom=12.5),
         views=[pdk.View(type="MapView", controller={"dragRotate": False, "touchRotate": False})],
         map_style="light",
