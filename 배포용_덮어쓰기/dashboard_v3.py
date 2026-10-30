@@ -1535,9 +1535,21 @@ MAP_UNIFY_CSS = """
       c.setAttribute("fill","none");c.setAttribute("stroke","#0b6ea0");c.setAttribute("stroke-width","6");c.setAttribute("stroke-linejoin","round");g.appendChild(c);});
     svg.insertBefore(g,ps[0]);
   }
-  function run(){queued=false;document.querySelectorAll(".jmap, .ovmap svg").forEach(function(n){coast(n.tagName.toLowerCase()==="svg"?n:n.querySelector("svg"));});}
+  function ring(svg){
+    var sel=svg.querySelector("path.rg.sel"),old=svg.querySelector("g.selring");
+    var key=sel?sel.getAttribute("d").length+":"+sel.getAttribute("d").slice(0,40):"";
+    if(old&&old.getAttribute("data-k")===key)return;
+    if(old)old.remove();
+    if(!sel)return;
+    var ps=svg.querySelectorAll("path.rg"),g=document.createElementNS(NS,"g");
+    g.setAttribute("class","selring");g.setAttribute("data-k",key);g.setAttribute("pointer-events","none");
+    [["#08263a","8",""],["#ffffff","3.4","7 5"]].forEach(function(c){var p=document.createElementNS(NS,"path");p.setAttribute("d",sel.getAttribute("d"));
+      p.setAttribute("fill","none");p.setAttribute("stroke",c[0]);p.setAttribute("stroke-width",c[1]);p.setAttribute("stroke-linejoin","round");if(c[2])p.setAttribute("stroke-dasharray",c[2]);g.appendChild(p);});
+    ps[ps.length-1].after(g);
+  }
+  function run(){queued=false;document.querySelectorAll(".jmap, .ovmap svg").forEach(function(n){var sv=n.tagName.toLowerCase()==="svg"?n:n.querySelector("svg");coast(sv);ring(sv);});}
   function q(){if(!queued){queued=true;requestAnimationFrame(run);}}
-  new MutationObserver(q).observe(document.documentElement,{childList:true,subtree:true});
+  new MutationObserver(q).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});
   q();
 })();
 </script>
@@ -1638,6 +1650,58 @@ def sea_layer() -> pdk.Layer:
     )
 
 
+def _dash_features(feats: list) -> dict:
+    """선택 지역의 윤곽선을 짧은 선분(점선)으로 잘라 LineString 모음으로 만든다."""
+    import math
+    lines = []
+    for f in feats:
+        g = f["geometry"]
+        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        for poly in polys:
+            ring = [tuple(pt[:2]) for pt in poly[0]]
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])
+            seg = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(ring, ring[1:])]
+            total = sum(seg)
+            if total <= 0:
+                continue
+            n = max(10, round(total / 0.012))
+            period = total / n
+            on, off = period * 0.6, period * 0.4
+
+            def at(d):
+                d %= total
+                for (a, b), l in zip(zip(ring, ring[1:]), seg):
+                    if d <= l:
+                        t = d / l if l else 0
+                        return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+                    d -= l
+                return ring[-1]
+
+            for i in range(n):
+                start = i * period
+                pts = [at(start + on * k / 4) for k in range(5)]
+                lines.append({"type": "Feature", "properties": {}, "geometry": {"type": "LineString", "coordinates": [list(p) for p in pts]}})
+    return {"type": "FeatureCollection", "features": lines}
+
+
+def select_rings(boundary_data: dict, selected: str) -> list:
+    """선택한 지역 윤곽을 맨 위에 그린다: 남색 실선 바탕 위에 흰 점선. 이웃 지역에 가려지지 않고 어떤 배경에서도 보인다."""
+    if not selected:
+        return []
+    feats = [f for f in boundary_data["features"] if f["properties"]["행정구역명"] == selected]
+    if not feats:
+        return []
+    data = {"type": "FeatureCollection", "features": feats}
+    unit = {"line_width_units": _S("pixels")}
+    return [
+        pdk.Layer("GeoJsonLayer", data, pickable=False, stroked=True, filled=False,
+                  get_line_color=[8, 38, 58, 255], get_line_width=7, **unit),
+        pdk.Layer("GeoJsonLayer", _dash_features(feats), pickable=False, stroked=True, filled=False,
+                  get_line_color=[255, 255, 255, 255], get_line_width=3, **unit),
+    ]
+
+
 def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: str) -> pdk.Deck:
     colored = set()
     for feature in boundary_data["features"]:
@@ -1650,13 +1714,15 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
             fill = KIND_RGB["spend"] if kind in ("spend", "both") else OTHER_RGB
         else:
             fill = KIND_RGB["conc"] if kind in ("conc", "both") else OTHER_RGB
+        if selected:  # 지역을 고르면 그 지역만 분류 색으로, 나머지는 옅은 육지색으로
+            fill = KIND_RGB[kind] if (region == selected and kind) else OTHER_RGB
         if fill != OTHER_RGB:
             colored.add(region)
         properties.update(
             {
                 "fill_color": fill,
-                "line_color": [21, 32, 30, 255] if region == selected else [255, 255, 255, 230],
-                "line_w": 3 if region == selected else 1,
+                "line_color": [255, 255, 255, 230],
+                "line_w": 1,
                 "상태": KIND_LABEL[kind] if kind else "선별되지 않음",
             }
         )
@@ -1694,7 +1760,7 @@ def build_summary_map(boundary_data: dict, summary: dict, view: str, selected: s
         background_padding=[4, 2],
     )
     return pdk.Deck(
-        layers=[sea_layer(), coast_layer(boundary_data), layer, labels],
+        layers=[sea_layer(), coast_layer(boundary_data), layer, *select_rings(boundary_data, selected), labels],
         initial_view_state=pdk.ViewState(latitude=33.37, longitude=126.56, zoom=9.1, min_zoom=8.8, max_zoom=12.5),
         views=[pdk.View(type="MapView", controller={"dragRotate": False, "touchRotate": False})],
         map_style="light",
